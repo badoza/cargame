@@ -1,93 +1,236 @@
-const uiLayer = document.getElementById('ui-layer');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreElement = document.getElementById('score');
+const overlay = document.getElementById('overlay');
+const overlayTitle = document.getElementById('overlay-title');
 const startBtn = document.getElementById('start-btn');
-const hud = document.getElementById('hud');
-const speedDisplay = document.getElementById('speed');
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
-scene.fog = new THREE.Fog(0x000000, 10, 50);
-
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 3, 7);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-
-// CRITICAL FIX: Force canvas to the background layer
-renderer.domElement.style.position = 'absolute';
-renderer.domElement.style.top = '0';
-renderer.domElement.style.left = '0';
-renderer.domElement.style.zIndex = '1';
-
-document.getElementById('game-container').appendChild(renderer.domElement);
-
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(10, 20, 10);
-scene.add(dirLight);
-
-// Road Environment
-const roadGeometry = new THREE.PlaneGeometry(20, 200, 10, 100);
-const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x222222, wireframe: true });
-const road = new THREE.Mesh(roadGeometry, roadMaterial);
-road.rotation.x = -Math.PI / 2;
-scene.add(road);
-
-// Player Bike Placeholder
-const bikeGeometry = new THREE.BoxGeometry(1, 1.5, 2);
-const bikeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const bike = new THREE.Mesh(bikeGeometry, bikeMaterial);
-bike.position.y = 0.75;
-scene.add(bike);
-
+const tileSize = 20;
+let score = 0;
 let isPlaying = false;
-let speed = 0;
-const keys = { a: false, d: false, ArrowLeft: false, ArrowRight: false };
+let animationId;
 
-window.addEventListener('keydown', (e) => { keys[e.key] = true; });
-window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+// 1 = Wall, 0 = Pellet, 2 = Empty
+const initialMap = [
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+    [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+    [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,0,1],
+    [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
+    [1,1,1,1,0,1,1,1,2,1,2,1,1,1,0,1,1,1,1],
+    [2,2,2,1,0,1,2,2,2,2,2,2,2,1,0,1,2,2,2],
+    [1,1,1,1,0,1,2,1,1,2,1,1,2,1,0,1,1,1,1],
+    [2,2,2,2,0,2,2,1,2,2,2,1,2,2,0,2,2,2,2],
+    [1,1,1,1,0,1,2,1,1,1,1,1,2,1,0,1,1,1,1],
+    [2,2,2,1,0,1,2,2,2,2,2,2,2,1,0,1,2,2,2],
+    [1,1,1,1,0,1,2,1,1,1,1,1,2,1,0,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,1],
+    [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
+    [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],
+    [1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1],
+    [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
 
-window.addEventListener('resize', () => {
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-});
+let map = [];
+let pelletsCount = 0;
 
-function animate() {
-    requestAnimationFrame(animate);
+const player = { x: 9 * tileSize, y: 13 * tileSize, size: 14, speed: 2, dx: 0, dy: 0, nextDx: 0, nextDy: 0 };
+let ghosts = [];
 
-    if (isPlaying) {
-        if (speed < 120) speed += 0.5;
-        speedDisplay.innerText = Math.floor(speed);
-
-        if (keys.a || keys.ArrowLeft) {
-            bike.position.x -= 0.15;
-            bike.rotation.z = 0.2;
-        } else if (keys.d || keys.ArrowRight) {
-            bike.position.x += 0.15;
-            bike.rotation.z = -0.2;
-        } else {
-            bike.rotation.z *= 0.8;
+function initMap() {
+    map = initialMap.map(row => [...row]);
+    pelletsCount = 0;
+    for (let row = 0; row < map.length; row++) {
+        for (let col = 0; col < map[row].length; col++) {
+            if (map[row][col] === 0) pelletsCount++;
         }
-
-        if (bike.position.x < -9) bike.position.x = -9;
-        if (bike.position.x > 9) bike.position.x = 9;
-
-        // Simulate forward motion
-        road.position.z += speed * 0.005;
-        if (road.position.z > 10) road.position.z = 0;
-        
-        camera.position.x = bike.position.x * 0.5;
     }
-
-    renderer.render(scene, camera);
 }
 
-startBtn.addEventListener('click', () => {
-    uiLayer.classList.add('hidden');
-    hud.classList.remove('hidden');
+function initGhosts() {
+    ghosts = [
+        { x: 9 * tileSize, y: 7 * tileSize, color: '#ff0000', dx: 2, dy: 0 },
+        { x: 9 * tileSize, y: 9 * tileSize, color: '#ffb8ff', dx: -2, dy: 0 }
+    ];
+}
+
+function checkCollision(x, y, dx, dy, size) {
+    const nextX = x + dx;
+    const nextY = y + dy;
+    const offset = size / 2 - 1; 
+
+    // Check the 4 corners of the bounding box against the grid
+    const corners = [
+        { cx: nextX - offset, cy: nextY - offset },
+        { cx: nextX + offset, cy: nextY - offset },
+        { cx: nextX - offset, cy: nextY + offset },
+        { cx: nextX + offset, cy: nextY + offset }
+    ];
+
+    for (let corner of corners) {
+        let gridX = Math.floor(corner.cx / tileSize);
+        let gridY = Math.floor(corner.cy / tileSize);
+        
+        // Wrap around logic for tunnel
+        if (gridX < 0 || gridX >= map[0].length) continue; 
+        
+        if (map[gridY][gridX] === 1) return true; // Hit a wall
+    }
+    return false;
+}
+
+function update() {
+    if (!isPlaying) return;
+
+    // Player Movement Logic
+    // Try to move in the 'next' queued direction first
+    if (player.nextDx !== 0 || player.nextDy !== 0) {
+        if (!checkCollision(player.x, player.y, player.nextDx, player.nextDy, player.size)) {
+            player.dx = player.nextDx;
+            player.dy = player.nextDy;
+            // Clear queue
+            player.nextDx = 0; 
+            player.nextDy = 0; 
+        }
+    }
+
+    // Move if current direction is clear
+    if (!checkCollision(player.x, player.y, player.dx, player.dy, player.size)) {
+        player.x += player.dx;
+        player.y += player.dy;
+    }
+
+    // Screen wrap (Tunnel)
+    if (player.x < 0) player.x = canvas.width;
+    if (player.x > canvas.width) player.x = 0;
+
+    // Eat pellets
+    let gridX = Math.floor(player.x / tileSize);
+    let gridY = Math.floor(player.y / tileSize);
+    if (gridX >= 0 && gridX < map[0].length && map[gridY][gridX] === 0) {
+        map[gridY][gridX] = 2; // Set to empty
+        score += 10;
+        scoreElement.innerText = score;
+        pelletsCount--;
+
+        if (pelletsCount <= 0) {
+            endGame("YOU WIN");
+            return;
+        }
+    }
+
+    // Update Ghosts
+    ghosts.forEach(ghost => {
+        // Simple Ghost AI: If it hits a wall, pick a random valid direction
+        if (checkCollision(ghost.x, ghost.y, ghost.dx, ghost.dy, tileSize - 2)) {
+            const directions = [
+                { dx: 2, dy: 0 }, { dx: -2, dy: 0 }, { dx: 0, dy: 2 }, { dx: 0, dy: -2 }
+            ];
+            let validMoves = directions.filter(dir => !checkCollision(ghost.x, ghost.y, dir.dx, dir.dy, tileSize - 2));
+            if (validMoves.length > 0) {
+                let move = validMoves[Math.floor(Math.random() * validMoves.length)];
+                ghost.dx = move.dx;
+                ghost.dy = move.dy;
+            } else {
+                ghost.dx = 0; ghost.dy = 0;
+            }
+        }
+        ghost.x += ghost.dx;
+        ghost.y += ghost.dy;
+
+        // Ghost collision with player
+        const dist = Math.hypot(player.x - ghost.x, player.y - ghost.y);
+        if (dist < player.size) {
+            endGame("GAME OVER");
+        }
+    });
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Map
+    for (let row = 0; row < map.length; row++) {
+        for (let col = 0; col < map[row].length; col++) {
+            if (map[row][col] === 1) {
+                ctx.fillStyle = '#fff'; // Minimalist white walls
+                // Create hollow box effect for a premium look
+                ctx.fillRect(col * tileSize, row * tileSize, tileSize, tileSize);
+                ctx.fillStyle = '#000';
+                ctx.fillRect(col * tileSize + 1, row * tileSize + 1, tileSize - 2, tileSize - 2);
+            } else if (map[row][col] === 0) {
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(col * tileSize + tileSize/2, row * tileSize + tileSize/2, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    // Draw Player
+    ctx.fillStyle = '#ffff00';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.size / 2, 0.2 * Math.PI, 1.8 * Math.PI); // Open mouth
+    ctx.lineTo(player.x, player.y);
+    ctx.fill();
+
+    // Draw Ghosts
+    ghosts.forEach(ghost => {
+        ctx.fillStyle = ghost.color;
+        ctx.fillRect(ghost.x - tileSize/2 + 2, ghost.y - tileSize/2 + 2, tileSize - 4, tileSize - 4);
+    });
+}
+
+function loop() {
+    update();
+    draw();
+    if (isPlaying) {
+        animationId = requestAnimationFrame(loop);
+    }
+}
+
+function startGame() {
+    initMap();
+    initGhosts();
+    player.x = 9 * tileSize + tileSize/2;
+    player.y = 13 * tileSize + tileSize/2;
+    player.dx = 0; player.dy = 0;
+    player.nextDx = 0; player.nextDy = 0;
+    score = 0;
+    scoreElement.innerText = score;
     isPlaying = true;
+    overlay.classList.add('hidden');
+    loop();
+}
+
+function endGame(message) {
+    isPlaying = false;
+    cancelAnimationFrame(animationId);
+    overlayTitle.innerText = message;
+    startBtn.innerText = "PLAY AGAIN";
+    overlay.classList.remove('hidden');
+}
+
+// Input Handling
+function setDirection(dx, dy) {
+    player.nextDx = dx;
+    player.nextDy = dy;
+}
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp' || e.key === 'w') setDirection(0, -player.speed);
+    if (e.key === 'ArrowDown' || e.key === 's') setDirection(0, player.speed);
+    if (e.key === 'ArrowLeft' || e.key === 'a') setDirection(-player.speed, 0);
+    if (e.key === 'ArrowRight' || e.key === 'd') setDirection(player.speed, 0);
 });
 
-animate();
+// Mobile Controls
+document.getElementById('btn-up').addEventListener('pointerdown', () => setDirection(0, -player.speed));
+document.getElementById('btn-down').addEventListener('pointerdown', () => setDirection(0, player.speed));
+document.getElementById('btn-left').addEventListener('pointerdown', () => setDirection(-player.speed, 0));
+document.getElementById('btn-right').addEventListener('pointerdown', () => setDirection(player.speed, 0));
+
+startBtn.addEventListener('click', startGame);
+draw(); // Initial draw before start
