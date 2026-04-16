@@ -3,19 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BADOZA | Moto Brawler</title>
+    <title>ARCADE | Pac-Man</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-    <div id="game-container">
-        <div id="ui-layer" class="ui-panel">
-            <h1 id="title">MOTO BRAWLER</h1>
-            <button id="start-btn">RIDE</button>
+    <div id="game-wrapper">
+        <div class="header">
+            <h1>PAC-MAN</h1>
+            <div id="score-board">SCORE: <span id="score">0</span></div>
         </div>
         
-        <div id="hud" class="ui-panel hidden">
-            <span>MPH: <strong id="speed">0</strong></span>
+        <div class="canvas-container">
+            <canvas id="gameCanvas" width="380" height="380"></canvas>
+            
+            <div id="overlay" class="overlay">
+                <h2 id="overlay-title">READY</h2>
+                <button id="start-btn">PLAY</button>
+            </div>
+        </div>
+        
+        <div id="mobile-controls">
+            <button class="d-pad" id="btn-up">▲</button>
+            <div class="d-pad-row">
+                <button class="d-pad" id="btn-left">◀</button>
+                <button class="d-pad" id="btn-down">▼</button>
+                <button class="d-pad" id="btn-right">▶</button>
+            </div>
         </div>
     </div>
     <script src="game.js"></script>
