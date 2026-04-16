@@ -19,7 +19,7 @@ let scoreMultiplier = 1;
 // 1 = Wall, 0 = Pellet, 2 = Empty Path, 3 = MEDICINE (Power Pellet)
 const level = [
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,3,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,3,1], // Medicines in corners
+    [1,3,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,3,1], // <--- Medicine 1 & 2
     [1,0,1,1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1],
     [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
     [1,0,1,1,0,1,0,1,1,1,1,1,0,1,0,1,1,0,1],
@@ -36,7 +36,7 @@ const level = [
     [1,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1],
     [1,1,0,1,0,1,0,1,1,1,1,1,0,1,0,1,0,1,1],
     [1,0,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,0,1],
-    [1,3,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,3,1], // Medicines in corners
+    [1,3,1,1,1,1,1,1,0,1,0,1,1,1,1,1,1,3,1], // <--- Medicine 3 & 4
     [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
@@ -47,11 +47,12 @@ const cols = level[0].length;
 
 const player = { x: 9 * tileSize, y: 15 * tileSize, vx: 0, vy: 0, nextVx: 0, nextVy: 0, speed: 2 };
 
+// Start locations stored so we can send eaten ghosts back home
 const ghosts = [
-    { startX: 8 * tileSize, startY: 9 * tileSize, x: 8 * tileSize, y: 9 * tileSize, vx: 2, vy: 0, speed: 2, color: '#ff0000' }, // Red
-    { startX: 10 * tileSize, startY: 9 * tileSize, x: 10 * tileSize, y: 9 * tileSize, vx: -2, vy: 0, speed: 2, color: '#ffb8ff' }, // Pink
-    { startX: 9 * tileSize, startY: 7 * tileSize, x: 9 * tileSize, y: 7 * tileSize, vx: 0, vy: 2, speed: 2, color: '#00ffff' }, // Cyan
-    { startX: 9 * tileSize, startY: 11 * tileSize, x: 9 * tileSize, y: 11 * tileSize, vx: 0, vy: -2, speed: 2, color: '#ffb852' } // Orange
+    { startX: 8 * tileSize, startY: 9 * tileSize, x: 8 * tileSize, y: 9 * tileSize, vx: 2, vy: 0, speed: 2, color: '#ff0000' },
+    { startX: 10 * tileSize, startY: 9 * tileSize, x: 10 * tileSize, y: 9 * tileSize, vx: -2, vy: 0, speed: 2, color: '#ffb8ff' },
+    { startX: 9 * tileSize, startY: 7 * tileSize, x: 9 * tileSize, y: 7 * tileSize, vx: 0, vy: 2, speed: 2, color: '#00ffff' },
+    { startX: 9 * tileSize, startY: 11 * tileSize, x: 9 * tileSize, y: 11 * tileSize, vx: 0, vy: -2, speed: 2, color: '#ffb852' }
 ];
 
 function getGrid(r, c) {
@@ -65,7 +66,7 @@ function initGame() {
     grid = level.map(row => [...row]);
     pelletsRemaining = 0;
     
-    // Count both standard pellets (0) and medicine (3)
+    // Count both standard pellets and medicine
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             if (grid[r][c] === 0 || grid[r][c] === 3) pelletsRemaining++;
@@ -77,16 +78,15 @@ function initGame() {
     player.vx = 0; player.vy = 0;
     player.nextVx = 0; player.nextVy = 0;
 
-    // Reset ghosts to their starting points
-    ghosts.forEach(g => {
+    ghosts.forEach((g, index) => {
         g.x = g.startX;
         g.y = g.startY;
+        // Reset starting movement
+        if (index === 0) { g.vx = 2; g.vy = 0; }
+        else if (index === 1) { g.vx = -2; g.vy = 0; }
+        else if (index === 2) { g.vx = 0; g.vy = 2; }
+        else { g.vx = 0; g.vy = -2; }
     });
-    
-    ghosts[0].vx = 2; ghosts[0].vy = 0;
-    ghosts[1].vx = -2; ghosts[1].vy = 0;
-    ghosts[2].vx = 0; ghosts[2].vy = 2;
-    ghosts[3].vx = 0; ghosts[3].vy = -2;
 
     score = 0;
     scoreEl.innerText = score;
@@ -100,12 +100,11 @@ function initGame() {
 
 function activateBeastMode() {
     isBeastMode = true;
-    scoreMultiplier = 1; // Resets bonus multiplier
+    scoreMultiplier = 1;
     
-    // Clear the existing timer if the player eats another medicine while already in beast mode
     if (beastTimer) clearTimeout(beastTimer);
     
-    // Set timer to return to normal after 6 seconds (6000ms)
+    // Beast Mode lasts for 6 seconds
     beastTimer = setTimeout(() => {
         isBeastMode = false;
     }, 6000);
@@ -184,7 +183,7 @@ function update() {
     updateEntity(player, true);
     ghosts.forEach(g => updateEntity(g, false));
 
-    // Pellet Eating Logic
+    // Pellet & Medicine Logic
     if (player.x % tileSize === 0 && player.y % tileSize === 0) {
         let c = Math.floor(player.x / tileSize);
         let r = Math.floor(player.y / tileSize);
@@ -192,7 +191,7 @@ function update() {
         if (c >= 0 && c < cols) {
             let cell = grid[r][c];
             if (cell === 0 || cell === 3) {
-                grid[r][c] = 2; // Erase the pellet
+                grid[r][c] = 2; // Erase it
                 pelletsRemaining--;
                 
                 if (cell === 3) {
@@ -208,21 +207,22 @@ function update() {
         }
     }
 
-    // Ghost Hitboxes
+    // Ghost Combat Logic
     ghosts.forEach(g => {
         const dist = Math.hypot((player.x - g.x), (player.y - g.y));
         if (dist < tileSize - 4) {
             if (isBeastMode) {
-                // Eat the ghost
                 score += 200 * scoreMultiplier;
-                scoreMultiplier++; // Eating multiple ghosts gives more points
+                scoreMultiplier++; 
                 scoreEl.innerText = score;
                 
-                // Send ghost back to start
+                // Teleport eaten ghost back to start box
                 g.x = g.startX;
                 g.y = g.startY;
+                // Force them to stop briefly so they recalculate an exit
+                g.vx = 0; 
+                g.vy = 0;
             } else {
-                // Ghost eats you
                 gameOver("GAME OVER");
             }
         }
@@ -232,7 +232,6 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Map & Pellets
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             if (grid[r][c] === 1) {
@@ -242,24 +241,22 @@ function draw() {
                 ctx.fillRect(c * tileSize, r * tileSize, tileSize, tileSize);
                 ctx.strokeRect(c * tileSize + 2, r * tileSize + 2, tileSize - 4, tileSize - 4);
             } else if (grid[r][c] === 0) {
-                // Standard Pellet
+                // Normal dots
                 ctx.fillStyle = '#fff';
                 ctx.beginPath();
                 ctx.arc(c * tileSize + tileSize/2, r * tileSize + tileSize/2, 3, 0, Math.PI*2);
                 ctx.fill();
             } else if (grid[r][c] === 3) {
-                // THE MEDICINE: Pulsing Teal Pellet
-                ctx.fillStyle = '#00ffcc';
+                // THE MEDICINE: Flashes brightly to grab your attention
+                ctx.fillStyle = Math.floor(Date.now() / 250) % 2 === 0 ? '#00ffcc' : '#ffffff';
                 ctx.beginPath();
-                // Create a pulse animation using the current time
-                let radius = 6 + Math.sin(Date.now() / 150) * 2;
-                ctx.arc(c * tileSize + tileSize/2, r * tileSize + tileSize/2, radius, 0, Math.PI*2);
+                ctx.arc(c * tileSize + tileSize/2, r * tileSize + tileSize/2, 7, 0, Math.PI*2);
                 ctx.fill();
             }
         }
     }
 
-    // Draw Pac-Man
+    // Draw Player
     ctx.fillStyle = '#ffff00';
     ctx.beginPath();
     let angle = 0;
@@ -278,7 +275,7 @@ function draw() {
 
     // Draw Ghosts
     ghosts.forEach(g => {
-        // Change color to Deep Blue if Beast Mode is active
+        // Turn dark blue when vulnerable in Beast Mode
         ctx.fillStyle = isBeastMode ? '#0033ff' : g.color;
         
         ctx.beginPath();
