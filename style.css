@@ -1,63 +1,97 @@
 * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
     font-family: 'Helvetica Neue', Arial, sans-serif;
 }
 
 body {
     background-color: #000;
-    overflow: hidden;
-    width: 100vw;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     height: 100vh;
+    overflow: hidden;
 }
 
-#game-container {
+#game-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 400px;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    width: 380px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #fff;
+    margin-bottom: 20px;
+}
+
+h1 {
+    font-size: 1.5rem;
+    letter-spacing: 4px;
+    font-weight: 400;
+}
+
+#score-board {
+    font-size: 1.2rem;
+    font-weight: 300;
+    letter-spacing: 1px;
+}
+
+.canvas-container {
     position: relative;
+    width: 380px;
+    height: 380px;
+}
+
+canvas {
+    background-color: #000;
+    display: block;
+}
+
+/* Minimalist Overlay */
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
-}
-
-/* Editorial Minimalism: High contrast, stark black and white */
-.ui-panel {
-    position: absolute;
-    background: #000;
-    border: 1px solid #fff;
-    color: #fff;
-    z-index: 10; /* Ensures UI is always clickable */
-}
-
-#ui-layer {
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    padding: 50px 80px;
-    text-align: center;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
     transition: opacity 0.3s ease;
 }
 
-#ui-layer.hidden {
+.overlay.hidden {
     opacity: 0;
     pointer-events: none;
 }
 
-#title {
+#overlay-title {
     font-size: 2.5rem;
     letter-spacing: 6px;
-    margin-bottom: 40px;
-    font-weight: 400;
-    text-transform: uppercase;
+    margin-bottom: 30px;
+    font-weight: 300;
 }
 
 button {
-    padding: 16px 48px;
+    padding: 12px 36px;
     font-size: 1rem;
-    letter-spacing: 3px;
+    letter-spacing: 2px;
     color: #000;
     background: #fff;
-    border: none;
+    border: 1px solid #fff;
     cursor: pointer;
-    text-transform: uppercase;
     font-weight: bold;
     transition: background 0.2s, color 0.2s;
 }
@@ -65,18 +99,32 @@ button {
 button:hover {
     background: #000;
     color: #fff;
-    border: 1px solid #fff;
 }
 
-#hud {
-    bottom: 40px;
-    right: 40px;
-    padding: 20px 30px;
-    font-size: 1.5rem;
-    font-weight: 300;
-    letter-spacing: 2px;
-}
-
-#hud.hidden {
+/* On-Screen Controls */
+#mobile-controls {
     display: none;
+    margin-top: 30px;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.d-pad-row {
+    display: flex;
+    gap: 10px;
+}
+
+.d-pad {
+    padding: 15px 20px;
+    font-size: 1.2rem;
+    border-radius: 4px;
+    user-select: none;
+}
+
+/* Automatically show D-Pad on mobile screens */
+@media (max-width: 768px) {
+    #mobile-controls {
+        display: flex;
+    }
 }
