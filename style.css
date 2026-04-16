@@ -2,12 +2,12 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Helvetica Neue', Arial, sans-serif; /* Clean, editorial typography */
+    font-family: 'Helvetica Neue', Arial, sans-serif;
 }
 
 body {
     background-color: #000;
-    overflow: hidden; /* Prevents scrolling */
+    overflow: hidden;
     width: 100vw;
     height: 100vh;
 }
@@ -18,25 +18,22 @@ body {
     height: 100%;
 }
 
-/* Sleek, minimal glassmorphism UI */
-.glass-panel {
+/* Editorial Minimalism: High contrast, stark black and white */
+.ui-panel {
     position: absolute;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
+    background: #000;
+    border: 1px solid #fff;
+    color: #fff;
+    z-index: 10; /* Ensures UI is always clickable */
 }
 
 #ui-layer {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    padding: 40px 60px;
-    border-radius: 8px;
+    padding: 50px 80px;
     text-align: center;
-    z-index: 10;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.3s ease;
 }
 
 #ui-layer.hidden {
@@ -45,36 +42,39 @@ body {
 }
 
 #title {
-    font-size: 2rem;
-    letter-spacing: 4px;
-    margin-bottom: 30px;
-    font-weight: 300;
+    font-size: 2.5rem;
+    letter-spacing: 6px;
+    margin-bottom: 40px;
+    font-weight: 400;
+    text-transform: uppercase;
 }
 
 button {
-    padding: 15px 40px;
+    padding: 16px 48px;
     font-size: 1rem;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     color: #000;
     background: #fff;
     border: none;
-    border-radius: 4px;
     cursor: pointer;
-    transition: background 0.2s, transform 0.2s;
+    text-transform: uppercase;
+    font-weight: bold;
+    transition: background 0.2s, color 0.2s;
 }
 
 button:hover {
-    background: #e0e0e0;
-    transform: scale(1.02);
+    background: #000;
+    color: #fff;
+    border: 1px solid #fff;
 }
 
 #hud {
-    bottom: 30px;
-    right: 30px;
-    padding: 15px 25px;
-    border-radius: 8px;
-    font-size: 1.2rem;
+    bottom: 40px;
+    right: 40px;
+    padding: 20px 30px;
+    font-size: 1.5rem;
     font-weight: 300;
+    letter-spacing: 2px;
 }
 
 #hud.hidden {
