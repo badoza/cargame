@@ -1,149 +1,106 @@
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+// UI Elements
 const uiLayer = document.getElementById('ui-layer');
 const startBtn = document.getElementById('start-btn');
-const scoreDisplay = document.getElementById('score-display');
-const title = document.getElementById('title');
 const hud = document.getElementById('hud');
-const currentScoreElement = document.getElementById('current-score');
+const speedDisplay = document.getElementById('speed');
 
-canvas.width = 400;
-canvas.height = 600;
+// Three.js Core Setup
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x111111);
+// Add fog to hide the horizon and simulate depth
+scene.fog = new THREE.Fog(0x111111, 10, 50); 
 
-let isGameActive = false;
-let score = 0;
-let gameSpeed = 5;
-let animationId;
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+// Position camera directly behind the player
+camera.position.set(0, 3, 7); 
 
-// Player Car
-const player = {
-    x: canvas.width / 2 - 20,
-    y: canvas.height - 100,
-    width: 40,
-    height: 70,
-    color: '#00d2ff',
-    speed: 6,
-    dx: 0
-};
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.getElementById('game-container').appendChild(renderer.domElement);
 
-// Obstacles Array
-let obstacles = [];
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(10, 20, 10);
+scene.add(dirLight);
 
-// Input handling (Keyboard)
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft' || e.key === 'a') player.dx = -player.speed;
-    if (e.key === 'ArrowRight' || e.key === 'd') player.dx = player.speed;
+// The "Road"
+const roadGeometry = new THREE.PlaneGeometry(20, 200, 10, 100);
+const roadMaterial = new THREE.MeshStandardMaterial({ 
+    color: 0x333333, 
+    wireframe: true // Wireframe gives a cool sense of speed for now
+});
+const road = new THREE.Mesh(roadGeometry, roadMaterial);
+road.rotation.x = -Math.PI / 2; // Lay flat
+scene.add(road);
+
+// The Player "Bike" (Temporary Box Model)
+const bikeGeometry = new THREE.BoxGeometry(1, 1.5, 2);
+const bikeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+const bike = new THREE.Mesh(bikeGeometry, bikeMaterial);
+bike.position.y = 0.75; // Sit on the road
+scene.add(bike);
+
+// Game State & Input
+let isPlaying = false;
+let speed = 0;
+const keys = { a: false, d: false, ArrowLeft: false, ArrowRight: false };
+
+window.addEventListener('keydown', (e) => { keys[e.key] = true; });
+window.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+// Handle Window Resize
+window.addEventListener('resize', () => {
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
 });
 
-document.addEventListener('keyup', (e) => {
-    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'ArrowRight' || e.key === 'd') {
-        player.dx = 0;
-    }
-});
+// Game Loop
+function animate() {
+    requestAnimationFrame(animate);
 
-function drawCar(car, isEnemy = false) {
-    ctx.fillStyle = car.color;
-    // Simple car shape
-    ctx.fillRect(car.x, car.y, car.width, car.height);
-    // Wheels
-    ctx.fillStyle = '#000';
-    ctx.fillRect(car.x - 5, car.y + 10, 5, 15);
-    ctx.fillRect(car.x + car.width, car.y + 10, 5, 15);
-    ctx.fillRect(car.x - 5, car.y + car.height - 25, 5, 15);
-    ctx.fillRect(car.x + car.width, car.y + car.height - 25, 5, 15);
-}
+    if (isPlaying) {
+        // Accelerate
+        if (speed < 120) speed += 0.5;
+        speedDisplay.innerText = Math.floor(speed);
 
-function handleObstacles() {
-    // Generate new obstacles
-    if (Math.random() < 0.03) {
-        let obsX = Math.random() * (canvas.width - 40);
-        obstacles.push({
-            x: obsX,
-            y: -70,
-            width: 40,
-            height: 70,
-            color: '#ff4b2b'
-        });
-    }
-
-    // Move and draw obstacles
-    for (let i = 0; i < obstacles.length; i++) {
-        let obs = obstacles[i];
-        obs.y += gameSpeed;
-        drawCar(obs, true);
-
-        // Collision Detection
-        if (player.x < obs.x + obs.width &&
-            player.x + player.width > obs.x &&
-            player.y < obs.y + obs.height &&
-            player.y + player.height > obs.y) {
-            gameOver();
+        // Steering
+        if (keys.a || keys.ArrowLeft) {
+            bike.position.x -= 0.15;
+            bike.rotation.z = 0.2; // Lean left
+        } else if (keys.d || keys.ArrowRight) {
+            bike.position.x += 0.15;
+            bike.rotation.z = -0.2; // Lean right
+        } else {
+            // Return to center balance
+            bike.rotation.z *= 0.8; 
         }
 
-        // Remove off-screen obstacles and increase score
-        if (obs.y > canvas.height) {
-            obstacles.splice(i, 1);
-            score++;
-            currentScoreElement.innerText = score;
-            i--;
-            
-            // Make the game crazier!
-            if (score % 5 === 0) gameSpeed += 0.5; 
+        // Keep bike on the road
+        if (bike.position.x < -9) bike.position.x = -9;
+        if (bike.position.x > 9) bike.position.x = 9;
+
+        // Animate the road texture to simulate movement
+        // We move the road backwards towards the camera, then reset it
+        road.position.z += speed * 0.005;
+        if (road.position.z > 10) {
+            road.position.z = 0;
         }
+        
+        // Camera follows bike slightly
+        camera.position.x = bike.position.x * 0.5;
     }
+
+    renderer.render(scene, camera);
 }
 
-function update() {
-    if (!isGameActive) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw Road Lines
-    ctx.strokeStyle = '#fff';
-    ctx.setLineDash([20, 20]);
-    ctx.beginPath();
-    ctx.moveTo(canvas.width / 2, 0);
-    ctx.lineTo(canvas.width / 2, canvas.height);
-    ctx.lineDashOffset = -Date.now() / 20 * gameSpeed; // Animate lines
-    ctx.stroke();
-
-    // Move Player
-    player.x += player.dx;
-    
-    // Boundary check
-    if (player.x < 0) player.x = 0;
-    if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
-
-    drawCar(player);
-    handleObstacles();
-
-    animationId = requestAnimationFrame(update);
-}
-
-function startGame() {
-    isGameActive = true;
-    score = 0;
-    gameSpeed = 5;
-    obstacles = [];
-    player.x = canvas.width / 2 - 20;
-    currentScoreElement.innerText = score;
-    
+// Start sequence
+startBtn.addEventListener('click', () => {
     uiLayer.classList.add('hidden');
     hud.classList.remove('hidden');
-    
-    update();
-}
+    isPlaying = true;
+});
 
-function gameOver() {
-    isGameActive = false;
-    cancelAnimationFrame(animationId);
-    
-    uiLayer.classList.remove('hidden');
-    hud.classList.add('hidden');
-    title.innerText = 'CRASHED!';
-    scoreDisplay.innerText = `Final Score: ${score}`;
-    startBtn.innerText = 'Try Again';
-}
-
-startBtn.addEventListener('click', startGame);
+animate();
