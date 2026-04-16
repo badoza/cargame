@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crazy Racer</title>
+    <title>3D Moto Brawler</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-    <div class="game-container">
-        <canvas id="gameCanvas"></canvas>
-        <div id="ui-layer" class="ui-layer">
-            <h1 id="title">Crazy Racer</h1>
-            <p id="score-display">Score: 0</p>
-            <button id="start-btn">Start Game</button>
+    <div id="game-container">
+        <div id="ui-layer" class="glass-panel">
+            <h1 id="title">MOTO BRAWLER</h1>
+            <button id="start-btn">RIDE</button>
         </div>
-        <div id="hud" class="hidden">Score: <span id="current-score">0</span></div>
+        
+        <div id="hud" class="glass-panel hidden">
+            <span>MPH: <strong id="speed">0</strong></span>
+        </div>
     </div>
     <script src="game.js"></script>
 </body>
