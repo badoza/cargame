@@ -3,28 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARCADE | Pac-Man</title>
+    <title>Arcade | Pac-Man</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-wrapper">
-        <div class="header">
-            <h1>PAC-MAN</h1>
-            <div id="score-board">SCORE: <span id="score">0</span></div>
+    <div id="game-container">
+        <div id="header">
+            <h2>PAC-MAN</h2>
+            <p>SCORE: <span id="score">0</span></p>
         </div>
         
-        <div class="canvas-container">
-            <canvas id="gameCanvas" width="380" height="380"></canvas>
+        <div id="canvas-wrapper">
+            <canvas id="gameCanvas" width="380" height="420"></canvas>
             
-            <div id="overlay" class="overlay">
-                <h2 id="overlay-title">READY</h2>
+            <div id="ui-overlay">
+                <h1 id="message">READY</h1>
                 <button id="start-btn">PLAY</button>
             </div>
         </div>
-        
+
         <div id="mobile-controls">
             <button class="d-pad" id="btn-up">▲</button>
-            <div class="d-pad-row">
+            <div class="row">
                 <button class="d-pad" id="btn-left">◀</button>
                 <button class="d-pad" id="btn-down">▼</button>
                 <button class="d-pad" id="btn-right">▶</button>
