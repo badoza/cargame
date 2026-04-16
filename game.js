@@ -49,6 +49,14 @@ const ghosts = [
     { x: 9 * tileSize, y: 11 * tileSize, vx: 0, vy: -2, speed: 2, color: '#ffb852' } // Orange
 ];
 
+// BULLETPROOF GRID WRAPPER: Prevents Javascript from crashing on map edges
+function getGrid(r, c) {
+    if (r < 0 || r >= rows) return 1; // Treat out-of-bounds up/down as solid walls
+    if (c < 0) c = cols - 1;          // Wrap left tunnel
+    if (c >= cols) c = 0;             // Wrap right tunnel
+    return grid[r][c];
+}
+
 function initGame() {
     grid = level.map(row => [...row]);
     pelletsRemaining = 0;
@@ -76,39 +84,43 @@ function initGame() {
 }
 
 function updateEntity(ent, isPlayer) {
-    // Rigid Grid Lock: Only calculate turns when perfectly centered in a tile
+    
+    // INSTANT REVERSE FOR PLAYER: Makes controls feel incredibly responsive
+    if (isPlayer) {
+        if ((ent.nextVx !== 0 && ent.nextVx === -ent.vx) || 
+            (ent.nextVy !== 0 && ent.nextVy === -ent.vy)) {
+            ent.vx = ent.nextVx;
+            ent.vy = ent.nextVy;
+        }
+    }
+
+    // STRICT JUNCTION LOCK: Only evaluates turns when perfectly centered
     if (ent.x % tileSize === 0 && ent.y % tileSize === 0) {
         let col = Math.floor(ent.x / tileSize);
         let row = Math.floor(ent.y / tileSize);
 
         if (isPlayer) {
-            // 1. Try turning to the queued direction
+            // 1. Try to turn to queued direction
             if (ent.nextVx !== 0 || ent.nextVy !== 0) {
-                let nextCol = col + Math.sign(ent.nextVx);
-                let nextRow = row + Math.sign(ent.nextVy);
+                let nCol = col + Math.sign(ent.nextVx);
+                let nRow = row + Math.sign(ent.nextVy);
                 
-                if (nextCol < 0) nextCol = cols - 1;
-                if (nextCol >= cols) nextCol = 0;
-
-                if (grid[nextRow][nextCol] !== 1) {
+                if (getGrid(nRow, nCol) !== 1) {
                     ent.vx = ent.nextVx;
                     ent.vy = ent.nextVy;
                 }
             }
             
-            // 2. Stop player exactly on the grid if hitting a wall straight ahead
-            let targetCol = col + Math.sign(ent.vx);
-            let targetRow = row + Math.sign(ent.vy);
+            // 2. Stop moving if hitting a wall straight ahead
+            let tCol = col + Math.sign(ent.vx);
+            let tRow = row + Math.sign(ent.vy);
             
-            if (targetCol < 0) targetCol = cols - 1;
-            if (targetCol >= cols) targetCol = 0;
-
-            if (grid[targetRow][targetCol] === 1) {
+            if (getGrid(tRow, tCol) === 1) {
                 ent.vx = 0;
                 ent.vy = 0;
             }
         } else {
-            // GHOST AI: Evaluate possible moves at every intersection
+            // GHOST AI: Continuously evaluate intersections without crashing
             let possibleMoves = [];
             const directions = [
                 {vx: ent.speed, vy: 0}, {vx: -ent.speed, vy: 0},
@@ -119,24 +131,21 @@ function updateEntity(ent, isPlayer) {
                 let tCol = col + Math.sign(dir.vx);
                 let tRow = row + Math.sign(dir.vy);
                 
-                if (tCol < 0) tCol = cols - 1;
-                if (tCol >= cols) tCol = 0;
-
-                if (grid[tRow][tCol] !== 1) {
-                    // Check if this move sends them backwards
+                if (getGrid(tRow, tCol) !== 1) {
                     let isReversing = (dir.vx !== 0 && dir.vx === -ent.vx) || (dir.vy !== 0 && dir.vy === -ent.vy);
                     possibleMoves.push({ ...dir, isReversing });
                 }
             }
 
             if (possibleMoves.length > 0) {
-                // Ignore reversing unless they are trapped in a dead end
                 let forwardMoves = possibleMoves.filter(m => !m.isReversing);
                 if (forwardMoves.length > 0) {
+                    // Pick a random open path that isn't backwards
                     let move = forwardMoves[Math.floor(Math.random() * forwardMoves.length)];
                     ent.vx = move.vx;
                     ent.vy = move.vy;
                 } else {
+                    // Reverse only if trapped in a dead end
                     ent.vx = possibleMoves[0].vx;
                     ent.vy = possibleMoves[0].vy;
                 }
@@ -144,10 +153,11 @@ function updateEntity(ent, isPlayer) {
         }
     }
 
+    // Apply movement
     ent.x += ent.vx;
     ent.y += ent.vy;
 
-    // Wrap around for the left/right escape tunnels
+    // Endless Tunnel Wrapping
     if (ent.x < -tileSize) ent.x = (cols - 1) * tileSize;
     if (ent.x > (cols - 1) * tileSize) ent.x = -tileSize;
 }
@@ -158,12 +168,12 @@ function update() {
     updateEntity(player, true);
     ghosts.forEach(g => updateEntity(g, false));
 
-    // Eat pellets
+    // Pellet Eating Logic
     if (player.x % tileSize === 0 && player.y % tileSize === 0) {
         let c = Math.floor(player.x / tileSize);
         let r = Math.floor(player.y / tileSize);
         if (c >= 0 && c < cols && grid[r][c] === 0) {
-            grid[r][c] = 2; // Erase pellet
+            grid[r][c] = 2; // Erase the pellet
             score += 10;
             scoreEl.innerText = score;
             pelletsRemaining--;
@@ -171,7 +181,7 @@ function update() {
         }
     }
 
-    // Ghost Hitboxes
+    // Deadly Collision Hitboxes
     ghosts.forEach(g => {
         const dist = Math.hypot((player.x - g.x), (player.y - g.y));
         if (dist < tileSize - 4) {
@@ -183,6 +193,7 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Render Walls and Pellets
     for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
             if (grid[r][c] === 1) {
@@ -200,11 +211,9 @@ function draw() {
         }
     }
 
-    // Pac-Man Animation Setup
+    // Render Pac-Man (Rotates based on velocity)
     ctx.fillStyle = '#ffff00';
     ctx.beginPath();
-    
-    // Rotate Pac-Man to face the direction he is moving
     let angle = 0;
     if (player.vx > 0) angle = 0;
     else if (player.vx < 0) angle = Math.PI;
@@ -219,6 +228,7 @@ function draw() {
     ctx.rotate(-angle);
     ctx.translate(-(player.x + tileSize/2), -(player.y + tileSize/2));
 
+    // Render Ghosts
     ghosts.forEach(g => {
         ctx.fillStyle = g.color;
         ctx.beginPath();
@@ -242,6 +252,7 @@ function gameOver(msg) {
     overlay.classList.remove('hidden');
 }
 
+// Input Routing
 function setDir(vx, vy) {
     player.nextVx = vx;
     player.nextVy = vy;
@@ -254,6 +265,7 @@ window.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === 'd') setDir(player.speed, 0);
 });
 
+// Mobile Layout Support
 document.getElementById('btn-up').addEventListener('pointerdown', () => setDir(0, -player.speed));
 document.getElementById('btn-down').addEventListener('pointerdown', () => setDir(0, player.speed));
 document.getElementById('btn-left').addEventListener('pointerdown', () => setDir(-player.speed, 0));
