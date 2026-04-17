@@ -12,7 +12,7 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    touch-action: manipulation; /* Prevents mobile double-tap zoom */
+    touch-action: manipulation;
 }
 
 #game-container {
@@ -91,7 +91,7 @@ button#start-btn:hover {
     color: #fff;
 }
 
-/* Mobile Controls - Editorial Minimalism */
+/* Mobile Controls */
 #mobile-controls {
     display: flex;
     flex-direction: column;
@@ -120,7 +120,17 @@ button#start-btn:hover {
     background: #333;
 }
 
-/* Hide controls on desktop */
+/* Professional Footer Styling */
+#footer {
+    margin-top: 25px;
+    font-size: 0.75rem;
+    letter-spacing: 3px;
+    color: #666;
+    text-transform: uppercase;
+    text-align: center;
+    width: 100%;
+}
+
 @media (min-width: 768px) {
     #mobile-controls {
         display: none;
